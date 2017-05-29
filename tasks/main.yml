@@ -1,0 +1,6 @@
+---
+# tasks file for darkbitz
+- name: install wget
+  yum:
+    name: wget
+    state: latest
