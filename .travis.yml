@@ -30,7 +30,7 @@ before_install:
   #- 'sudo docker pull ${distribution}:${version}'
   - 'sudo docker pull geerlingguy/docker-centos7-ansible:latest'
   # Customize container
-  - 'sudo docker build --rm=true --file=tests/Dockerfile.${distribution}-${version} --tag=${distribution}-${version}:ansible tests'
+  #- 'sudo docker build --rm=true --file=tests/Dockerfile.${distribution}-${version} --tag=${distribution}-${version}:ansible tests'
   # Pull the image from Docker Hub for the OS under test.
   # Pull container from Docker Hub.
   #- 'docker pull geerlingguy/docker-${distro}-ansible:latest'
