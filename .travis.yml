@@ -4,12 +4,10 @@ sudo: required
 
 env:
   # Provide a list of OSes we want to use for testing.
-  - distro: centos7
+  - distribution: centos
+    version: 7
     init: /usr/lib/systemd/systemd
     run_opts: "--privileged --volume=/sys/fs/cgroup:/sys/fs/cgroup:ro"
-  - distro: centos6
-    init: /sbin/init
-    run_opts: ""
 #  - distro: fedora24
 #    init: /usr/lib/systemd/systemd
 #    run_opts: "--privileged --volume=/sys/fs/cgroup:/sys/fs/cgroup:ro"
@@ -28,9 +26,13 @@ services:
   - docker
 
 before_install:
+  # Pull container
+  - 'sudo docker pull ${distribution}:${version}'
+  # Customize container
+  - 'sudo docker build --rm=true --file=tests/Dockerfile.${distribution}-${version} --tag=${distribution}-${version}:ansible tests'
   # Pull the image from Docker Hub for the OS under test.
   # Pull container from Docker Hub.
-  - 'docker pull geerlingguy/docker-${distro}-ansible:latest'
+  #- 'docker pull geerlingguy/docker-${distro}-ansible:latest'
 
 script:
   # Start the container from the image and perform tests.
@@ -38,33 +40,46 @@ script:
   - container_id=$(mktemp)
 
   # Run container detached, with our role mounted inside.
-  - 'docker run --detach --volume="${PWD}":/etc/ansible/roles/darkbitz:ro ${run_opts} geerlingguy/docker-${distro}-ansible:latest "${init}" > "${container_id}"'
+  #- 'docker run --detach --volume="${PWD}":/etc/ansible/roles/darkbitz:ro ${run_opts} geerlingguy/docker-${distro}-ansible:latest "${init}" > "${container_id}"'
+  # Run container in detached state
+  - 'sudo docker run --detach --volume="${PWD}":/etc/ansible/roles/darkbitz:ro ${run_opts} ${distribution}-${version}:ansible "${init}" > "${container_id}"'
+
 
   # Check the role/playbook's syntax.
-  - >
-    docker exec --tty "$(cat ${container_id})" env TERM=xterm
-    ansible-playbook /etc/ansible/roles/darkbitz/tests/test.yml
-    --syntax-check
+  #- >
+  #  docker exec --tty "$(cat ${container_id})" env TERM=xterm
+  #  ansible-playbook /etc/ansible/roles/darkbitz/tests/test.yml
+  #  --syntax-check
+  # Ansible syntax check.
+  - 'sudo docker exec --tty "$(cat ${container_id})" env TERM=xterm ansible-playbook /etc/ansible/roles/darkbitz/tests/test.yml --syntax-check'
+
+
 
   # Run the role/playbook with ansible-playbook.
-  - >
-    docker exec --tty "$(cat ${container_id})" env TERM=xterm
-    ansible-playbook /etc/ansible/roles/darkbitz/tests/test.yml
+  #- >
+  #  docker exec --tty "$(cat ${container_id})" env TERM=xterm
+  #  ansible-playbook /etc/ansible/roles/darkbitz/tests/test.yml
+  # Test role.
+  - 'sudo docker exec --tty "$(cat ${container_id})" env TERM=xterm ansible-playbook /etc/ansible/roles/darkbitz/tests/test.yml'
+
 
   # Run the role/playbook again, checking to make sure it's idempotent.
-  - idempotence=$(mktemp)
-  - >
-    docker exec "$(cat ${container_id})"
-    ansible-playbook /etc/ansible/roles/darkbitz/tests/test.yml
-    | tee -a ${idempotence}
-  - >
-    tail ${idempotence}
-    | grep -q 'changed=0.*failed=0'
-    && (echo 'Idempotence test: pass' && exit 0)
-    || (echo 'Idempotence test: fail' && exit 1)
+  #- idempotence=$(mktemp)
+  #- >
+  #  docker exec "$(cat ${container_id})"
+  #  ansible-playbook /etc/ansible/roles/darkbitz/tests/test.yml
+  #  | tee -a ${idempotence}
+  #- >
+  #  tail ${idempotence}
+  #  | grep -q 'changed=0.*failed=0'
+  #  && (echo 'Idempotence test: pass' && exit 0)
+  #  || (echo 'Idempotence test: fail' && exit 1)
+  #
+  #  # Ensure Wget is installed.
+  #  - 'docker exec --tty "$(cat ${container_id})" env TERM=xterm which wget'
 
-    # Ensure Wget is installed.
-    - 'docker exec --tty "$(cat ${container_id})" env TERM=xterm which wget'
+  # Clean up
+  - 'sudo docker stop "$(cat ${container_id})"'
 
 notifications:
   # Notify Ansible Galaxy when a role builds successfully.
